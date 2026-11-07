@@ -1,4 +1,25 @@
-CHANGES_SUMMARY.txt
-nextjssetup.txt
+# OS
 .DS_Store
-.
+
+# Environment variables
+.env
+.env*.local
+*.env
+
+# Dependencies
+node_modules/
+/.pnp
+.pnp.*
+
+# Build artifacts
+.next/
+out/
+build/
+dist/
+tmp/
+backend/idms/tmp/
+*.exe
+*.test
+
+# Air temp
+.air.toml
