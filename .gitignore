@@ -23,3 +23,6 @@ backend/idms/tmp/
 
 # Air temp
 .air.toml
+
+CHANGES_SUMMARY.txt
+nextjssetup.txt
