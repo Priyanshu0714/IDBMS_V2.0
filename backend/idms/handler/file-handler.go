@@ -1,12 +1,12 @@
 package handler
 
 import (
-	"backend/idms/services"
 	"fmt"
 	"net/http"
 	"strings"
 	"time"
 
+	"backend/idms/services"
 	"github.com/labstack/echo/v4"
 )
 
@@ -14,13 +14,11 @@ type FileHandler struct {
 	Minio *services.MinIOService
 }
 
-// getUsername extracts the authenticated username from JWT context
 func getUsername(c echo.Context) string {
 	u, _ := c.Get("username").(string)
 	return u
 }
 
-// ownsKey checks that the key belongs to the authenticated user (starts with "username/")
 func ownsKey(c echo.Context, key string) bool {
 	return strings.HasPrefix(key, getUsername(c)+"/")
 }
@@ -33,11 +31,7 @@ func (h *FileHandler) GetUploadUrl(c echo.Context) error {
 		})
 	}
 
-	// Use authenticated username as the folder prefix
-	prefix := getUsername(c)
-	key := fmt.Sprintf("%s/%d_%s", prefix, time.Now().Unix(), filename)
-
-	fmt.Print("\n", key, "\n")
+	key := fmt.Sprintf("%s/%d_%s", getUsername(c), time.Now().Unix(), filename)
 	uploadURL, err := h.Minio.GenerateUploadURL(key)
 	if err != nil {
 		return c.JSON(http.StatusInternalServerError, map[string]string{
@@ -61,14 +55,13 @@ func (h *FileHandler) GetDownloadUrl(c echo.Context) error {
 		})
 	}
 
-	// Ownership check
 	if !ownsKey(c, key) {
 		return c.JSON(http.StatusForbidden, map[string]string{
 			"error": "access denied",
 		})
 	}
 
-	var expiry time.Duration = 60 * time.Minute
+	expiry := 60 * time.Minute
 	if expiryStr != "" {
 		if minutes, err := time.ParseDuration(expiryStr + "m"); err == nil {
 			expiry = minutes
@@ -90,7 +83,6 @@ func (h *FileHandler) GetDownloadUrl(c echo.Context) error {
 
 func (h *FileHandler) PostMoveFile(c echo.Context) error {
 	key := c.FormValue("key")
-
 	if key == "" {
 		return c.JSON(http.StatusBadRequest, map[string]string{
 			"error": "key parameter is required",
@@ -103,15 +95,14 @@ func (h *FileHandler) PostMoveFile(c echo.Context) error {
 		})
 	}
 
-	err := h.Minio.MoveFile(c.Request().Context(), key)
-	if err != nil {
+	if err := h.Minio.MoveFile(c.Request().Context(), key); err != nil {
 		return c.JSON(http.StatusInternalServerError, map[string]string{
 			"error": err.Error(),
 		})
 	}
 
 	return c.JSON(http.StatusOK, map[string]string{
-		"message": "File moved successfully",
+		"message": "file moved successfully",
 	})
 }
 
@@ -121,9 +112,7 @@ func (h *FileHandler) GetFiles(c echo.Context) error {
 		bucket = "tempbucket"
 	}
 
-	// Force prefix to the authenticated user's folder
 	prefix := getUsername(c) + "/"
-
 	objects, err := h.Minio.ListFiles(bucket, prefix)
 	if err != nil {
 		return c.JSON(http.StatusInternalServerError, map[string]string{
@@ -199,14 +188,13 @@ func (h *FileHandler) DeleteFile(c echo.Context) error {
 		})
 	}
 
-	err := h.Minio.DeleteFile(c.Request().Context(), bucket, key)
-	if err != nil {
+	if err := h.Minio.DeleteFile(c.Request().Context(), bucket, key); err != nil {
 		return c.JSON(http.StatusInternalServerError, map[string]string{
 			"error": err.Error(),
 		})
 	}
 
 	return c.JSON(http.StatusOK, map[string]string{
-		"message": "File deleted successfully",
+		"message": "file deleted successfully",
 	})
 }

@@ -5,17 +5,14 @@ import { useRouter } from "next/navigation";
 import Sidebar from "./components/Sidebar";
 import { useAuth } from "./context/AuthContext";
 
-// Helper to get a display-friendly name from the object key
 function getDisplayName(key) {
   if (!key) return "Unknown";
   const parts = key.split("/");
   const filename = parts[parts.length - 1];
-  // Strip the unix timestamp prefix (e.g. "1234567890_Report.pdf" -> "Report.pdf")
   const match = filename.match(/^\d+_(.+)$/);
   return match ? match[1] : filename;
 }
 
-// Helper to guess file type from key
 function getFileType(key) {
   const ext = key.split(".").pop().toLowerCase();
   if (ext === "pdf") return "pdf";
@@ -26,7 +23,6 @@ function getFileType(key) {
   return "other";
 }
 
-// Helper to format file size
 function formatSize(bytes) {
   if (!bytes || bytes === 0) return "—";
   if (bytes < 1024) return bytes + " B";
@@ -153,9 +149,7 @@ export default function DashboardPage() {
       <main className="flex flex-1 w-full flex-row items-center justify-between bg-white sm:items-start text-black">
         <Sidebar />
 
-        {/* dashboard */}
         <div className="flex flex-col w-4/5 h-screen items-center justify-start">
-          {/* dashboard header */}
           <div className="flex flex-row w-full h-14 items-center justify-between px-6 bg-amber-500 text-white shadow-sm">
             <div className="flex flex-row items-center gap-2">
               <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -183,7 +177,6 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          {/* bucket toggle */}
           <div className="flex flex-row w-full items-center justify-between px-6 pt-5 pb-2">
             <div className="flex items-center gap-3">
               <span className="text-sm font-medium text-zinc-500">Storage View:</span>
@@ -212,11 +205,10 @@ export default function DashboardPage() {
             </div>
 
             <div className="text-xs text-zinc-400">
-              Only showing files belonging to <span className="font-semibold text-zinc-600">{user?.username}</span>
+              Files for <span className="font-semibold text-zinc-600">{user?.username}</span>
             </div>
           </div>
 
-          {/* main content - file grid */}
           <div className="flex flex-col w-full flex-1 overflow-y-auto p-6">
             <h2 className="text-lg font-semibold text-zinc-800 mb-4">
               Your Files
@@ -261,7 +253,7 @@ export default function DashboardPage() {
                   <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z" />
                   <polyline points="14 2 14 8 20 8" />
                 </svg>
-                <span className="text-sm font-medium">No files found in your folder</span>
+                <span className="text-sm font-medium">No files found</span>
                 <span className="text-xs text-zinc-400">Upload a file to get started</span>
               </div>
             )}

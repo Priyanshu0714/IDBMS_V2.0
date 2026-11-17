@@ -46,7 +46,6 @@ export default function Sidebar() {
 
   return (
     <div className="flex flex-col w-1/5 min-w-[220px] h-screen items-center justify-start border-r border-zinc-200">
-      {/* logo part */}
       <div className="flex flex-row w-full h-14 font-bold text-xl items-center justify-center gap-2 text-white bg-amber-500">
         <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
           <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z" />
@@ -58,7 +57,6 @@ export default function Sidebar() {
         IDMS
       </div>
 
-      {/* menu bar */}
       <div className="flex flex-col w-full flex-1 items-center justify-start px-3 py-4 gap-1">
         {navItems.map((item) => {
           const isActive = pathname === item.href;
@@ -79,9 +77,7 @@ export default function Sidebar() {
         })}
       </div>
 
-      {/* footer / user profile */}
       <div className="flex flex-col w-full h-auto bg-zinc-800 px-3 py-3 gap-2">
-        {/* User identification */}
         <div className="flex items-center gap-2.5 px-3 py-2 rounded-lg bg-zinc-900/60 text-zinc-200">
           <div className="w-7 h-7 rounded-full bg-amber-500 flex items-center justify-center font-bold text-xs text-white uppercase">
             {user?.username ? user.username.charAt(0) : "U"}
@@ -96,7 +92,6 @@ export default function Sidebar() {
           </div>
         </div>
 
-        {/* logout button */}
         <button
           onClick={logout}
           className="flex flex-row w-full h-9 px-3 items-center gap-2 rounded-lg hover:bg-red-500/10 text-red-400 hover:text-red-300 text-xs font-medium cursor-pointer transition-colors"

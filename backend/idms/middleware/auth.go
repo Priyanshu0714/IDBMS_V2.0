@@ -14,7 +14,7 @@ func JWTAuth(next echo.HandlerFunc) echo.HandlerFunc {
 		auth := c.Request().Header.Get("Authorization")
 		if auth == "" || !strings.HasPrefix(auth, "Bearer ") {
 			return c.JSON(http.StatusUnauthorized, map[string]string{
-				"error": "missing or invalid authorization header",
+				"error": "missing authorization header",
 			})
 		}
 
@@ -40,13 +40,11 @@ func JWTAuth(next echo.HandlerFunc) echo.HandlerFunc {
 		username, _ := claims["username"].(string)
 		if username == "" {
 			return c.JSON(http.StatusUnauthorized, map[string]string{
-				"error": "username not found in token",
+				"error": "username missing in token",
 			})
 		}
 
-		// Set username in context for handlers
 		c.Set("username", username)
 		return next(c)
 	}
 }
-

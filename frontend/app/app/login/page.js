@@ -10,7 +10,6 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-  const [successMsg, setSuccessMsg] = useState(null);
 
   const { login, signup } = useAuth();
   const router = useRouter();
@@ -18,7 +17,6 @@ export default function LoginPage() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError(null);
-    setSuccessMsg(null);
 
     if (!username.trim() || !password) {
       setError("Please fill in all fields.");
@@ -44,7 +42,6 @@ export default function LoginPage() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-zinc-50 font-sans p-4">
       <div className="w-full max-w-md bg-white rounded-2xl border border-zinc-200 shadow-sm p-8">
-        {/* Brand Header */}
         <div className="flex flex-col items-center mb-8">
           <div className="w-12 h-12 bg-amber-500 rounded-xl flex items-center justify-center text-white mb-3 shadow-md">
             <svg xmlns="http://www.w3.org/2000/svg" width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -59,7 +56,6 @@ export default function LoginPage() {
           <p className="text-xs text-zinc-500 mt-1">Intelligent Document Management System</p>
         </div>
 
-        {/* Tab Switcher */}
         <div className="flex bg-zinc-100 p-1 rounded-xl mb-6">
           <button
             type="button"
@@ -87,7 +83,6 @@ export default function LoginPage() {
           </button>
         </div>
 
-        {/* Feedback Messages */}
         {error && (
           <div className="mb-5 flex items-center gap-2 p-3 text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg">
             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0">
@@ -99,7 +94,6 @@ export default function LoginPage() {
           </div>
         )}
 
-        {/* Form */}
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label className="block text-xs font-semibold text-zinc-700 uppercase tracking-wider mb-1.5">
@@ -147,10 +141,9 @@ export default function LoginPage() {
         </form>
 
         <p className="text-center text-xs text-zinc-500 mt-6">
-          Files and folders are securely isolated per user account.
+          Isolated per-user document workspace
         </p>
       </div>
     </div>
   );
 }
-

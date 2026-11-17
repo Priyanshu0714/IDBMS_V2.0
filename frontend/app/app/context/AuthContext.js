@@ -20,7 +20,7 @@ export function AuthProvider({ children }) {
         setUser({ username: storedUser });
       }
     } catch (e) {
-      console.error("Failed to restore auth session:", e);
+      console.error("auth session restore failed:", e);
     } finally {
       setLoading(false);
     }
@@ -114,4 +114,3 @@ export function useAuth() {
   }
   return context;
 }
-

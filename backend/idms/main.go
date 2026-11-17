@@ -1,16 +1,19 @@
 package main
 
 import (
-	"backend/idms/database"
-	"backend/idms/handler"
-	"backend/idms/middleware"
-	"backend/idms/services"
+	"context"
 	"errors"
 	"fmt"
 	"log"
 	"log/slog"
 	"net/http"
 	"os"
+
+	"backend/idms/consumer"
+	"backend/idms/database"
+	"backend/idms/handler"
+	"backend/idms/middleware"
+	"backend/idms/services"
 
 	"github.com/joho/godotenv"
 	"github.com/labstack/echo/v4"
@@ -20,66 +23,78 @@ import (
 )
 
 func main() {
-	// Load environment variables
-	err := godotenv.Load()
-	if err != nil {
-		log.Fatal("Error while loading the env file")
+	if err := godotenv.Load(); err != nil {
+		log.Println("no .env file found, reading system env")
 	}
 
-	// Get environment variables
 	endpoint := os.Getenv("ENDPOINT")
 	accessKey := os.Getenv("ACCESS_KEY")
 	secretKey := os.Getenv("SECRET_KEY")
 	tempStore := os.Getenv("TEMP_STORE")
 	mainStore := os.Getenv("MAIN_STORE")
-	useSSLStr := os.Getenv("USE_SSL")
+	useSSL := os.Getenv("USE_SSL") == "true"
 
 	if endpoint == "" || accessKey == "" || secretKey == "" || tempStore == "" || mainStore == "" {
-		log.Fatal("Missing required environment variables")
+		log.Fatal("missing minio configuration in env")
 	}
 
-	useSSL := useSSLStr == "true"
-	fmt.Printf("Config loaded - Endpoint: %s,\n\n SSL: %t,\n\n Temp: %s,\n\n Main: %s\n", endpoint, useSSL, tempStore, mainStore)
-
-	// Initialize PostgreSQL
+	// postgres setup
 	if err := database.InitPostgres(); err != nil {
-		log.Fatal("Failed to initialize PostgreSQL:", err)
+		log.Fatal("postgres init failed:", err)
 	}
 
-	// Initialize MinIO service
+	// minio setup
 	minioService, err := services.NewMinIOService(endpoint, accessKey, secretKey, tempStore, mainStore, useSSL)
 	if err != nil {
-		log.Fatal("Failed to initialize MinIO service:", err)
+		log.Fatal("minio init failed:", err)
 	}
 
-	// Echo instance
-	e := echo.New()
+	// mongo setup
+	mongoClient, err := mongo.Connect(options.Client().ApplyURI(os.Getenv("MONGO_URL")))
+	if err != nil {
+		log.Fatal("mongo init failed:", err)
+	}
 
-	// Middleware
+	// kafka setup
+	kafkaBroker := os.Getenv("KAFKA_BROKER")
+	if kafkaBroker == "" {
+		kafkaBroker = "127.0.0.1:9092"
+	}
+	kafkaTopic := os.Getenv("KAFKA_TOPIC")
+	if kafkaTopic == "" {
+		kafkaTopic = "file-processing"
+	}
+	kafkaGroup := os.Getenv("KAFKA_GROUP")
+	if kafkaGroup == "" {
+		kafkaGroup = "idms-workers"
+	}
+
+	kafkaService := services.NewKafkaService(kafkaBroker, kafkaTopic)
+	defer kafkaService.Close()
+
+	// start background worker
+	worker := consumer.NewProcessingWorker(kafkaBroker, kafkaTopic, kafkaGroup, minioService, mongoClient)
+	defer worker.Close()
+	go worker.Start(context.Background())
+
+	e := echo.New()
 	e.Use(echomw.Logger())
 	e.Use(echomw.Recover())
 	e.Use(echomw.CORS())
 
-	// Public routes (no auth required)
 	api := e.Group("/api")
+
+	// public routes
 	api.POST("/signup", handler.Signup)
 	api.POST("/login", handler.Login)
-
-	// TESTING for the get request
 	e.GET("/test", func(c echo.Context) error {
-		return c.JSON(http.StatusOK, map[string]string{
-			"status": "OK",
-		})
+		return c.JSON(http.StatusOK, map[string]string{"status": "OK"})
 	})
 
-	// Protected routes (JWT required)
+	// auth protected routes
 	protected := api.Group("", middleware.JWTAuth)
 
-	filehandler := handler.FileHandler{
-		Minio: minioService,
-	}
-
-	// all the request assigned to the file-handler
+	filehandler := handler.FileHandler{Minio: minioService}
 	protected.GET("/upload-url", filehandler.GetUploadUrl)
 	protected.GET("/download-url", filehandler.GetDownloadUrl)
 	protected.POST("/move-file", filehandler.PostMoveFile)
@@ -87,32 +102,19 @@ func main() {
 	protected.GET("/file-info", filehandler.GetFileInfo)
 	protected.DELETE("/file", filehandler.DeleteFile)
 
-	processhandler := handler.ProcessHandler{
-		Minio: minioService,
-	}
-	// processing pipeline request assigned to the processing-handler
+	processhandler := handler.ProcessHandler{Kafka: kafkaService}
 	protected.POST("/process-file", processhandler.PostProcessFile)
 
-	client, err := mongo.Connect(options.Client().ApplyURI(os.Getenv("MONGO_URL")))
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	queryhandler := handler.QueryHandler{
-		Minio: minioService,
-		Mongo: client,
-	}
-	// query request
+	queryhandler := handler.QueryHandler{Minio: minioService, Mongo: mongoClient}
 	protected.POST("/query", queryhandler.QueryProcessing)
 
-	// Start server
 	port := os.Getenv("PORT")
 	if port == "" {
 		port = "8080"
 	}
 
-	fmt.Printf("Server starting on port %s\n", port)
+	fmt.Printf("server starting on port %s\n", port)
 	if err := e.Start(":" + port); err != nil && !errors.Is(err, http.ErrServerClosed) {
-		slog.Error("failed to start server", "error", err)
+		slog.Error("server stopped with error", "error", err)
 	}
 }

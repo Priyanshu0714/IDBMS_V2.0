@@ -1,11 +1,11 @@
 package handler
 
 import (
-	"backend/idms/database"
 	"net/http"
 	"os"
 	"time"
 
+	"backend/idms/database"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/labstack/echo/v4"
 )
@@ -28,7 +28,6 @@ func Signup(c echo.Context) error {
 	}
 
 	if err := database.CreateUser(req.Username, req.Password); err != nil {
-		// Unique username
 		return c.JSON(http.StatusConflict, map[string]string{"error": "username already exists"})
 	}
 
@@ -52,14 +51,12 @@ func Login(c echo.Context) error {
 		return c.JSON(http.StatusUnauthorized, map[string]string{"error": "invalid username or password"})
 	}
 
-	// Generate JWT
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
 		"username": req.Username,
 		"exp":      time.Now().Add(24 * time.Hour).Unix(),
 	})
 
-	secret := os.Getenv("JWT_SECRET")
-	tokenStr, err := token.SignedString([]byte(secret))
+	tokenStr, err := token.SignedString([]byte(os.Getenv("JWT_SECRET")))
 	if err != nil {
 		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "failed to generate token"})
 	}
@@ -69,4 +66,3 @@ func Login(c echo.Context) error {
 		"username": req.Username,
 	})
 }
-

@@ -45,9 +45,9 @@ export default function UploadPage() {
   const handleDrop = (e) => {
     e.preventDefault();
     setDragOver(false);
-    const droppedFile = e.dataTransfer.files[0];
-    if (droppedFile) {
-      setFile(droppedFile);
+    const dropped = e.dataTransfer.files[0];
+    if (dropped) {
+      setFile(dropped);
       setStatus(STATUS.IDLE);
       setError(null);
       setResult(null);
@@ -68,25 +68,21 @@ export default function UploadPage() {
     if (!file || !isAuthenticated) return;
 
     try {
-      // Step 1: Get presigned upload URL from authenticated API
       setStatus(STATUS.GETTING_URL);
-      setProgress("Generating secure upload URL...");
+      setProgress("Generating upload url...");
       setError(null);
 
-      const params = new URLSearchParams({
-        filename: file.name,
-      });
-
+      const params = new URLSearchParams({ filename: file.name });
       const urlRes = await authFetch(`/api/upload-url?${params}`);
       if (!urlRes.ok) {
         const errData = await urlRes.json().catch(() => ({}));
-        throw new Error(errData.error || `Failed to get upload URL (${urlRes.status})`);
+        throw new Error(errData.error || `Upload URL request failed (${urlRes.status})`);
       }
       const { upload_url, key } = await urlRes.json();
 
-      // Step 2: Upload file directly to MinIO temp bucket via presigned PUT
+      // put file straight to minio temp bucket
       setStatus(STATUS.UPLOADING);
-      setProgress("Uploading file to your temporary storage...");
+      setProgress("Uploading to storage...");
 
       const uploadRes = await fetch(upload_url, {
         method: "PUT",
@@ -100,18 +96,16 @@ export default function UploadPage() {
         throw new Error(`Upload failed (${uploadRes.status})`);
       }
 
-      // Step 3: File is now in temp bucket!
-      // Immediately return without blocking the user.
+      // return success right away, queue processing in background
       setStatus(STATUS.SUCCESS);
       setProgress("");
       setResult({ key });
 
-      // Trigger asynchronous background processing (fire-and-forget)
       const fileKey = key.split("/").slice(1).join("/");
       authFetch(`/api/process-file?filename=${encodeURIComponent(fileKey)}`, {
         method: "POST",
-      }).catch((bgErr) => {
-        console.warn("Background processing notification:", bgErr);
+      }).catch((err) => {
+        console.warn("queue processing error:", err);
       });
 
     } catch (err) {
@@ -151,9 +145,7 @@ export default function UploadPage() {
       <main className="flex flex-1 w-full flex-row items-center justify-between bg-white sm:items-start text-black">
         <Sidebar />
 
-        {/* upload content */}
         <div className="flex flex-col w-4/5 h-screen items-center justify-start">
-          {/* header */}
           <div className="flex flex-row w-full h-14 items-center justify-between px-6 bg-amber-500 text-white shadow-sm">
             <div className="flex flex-row items-center gap-2">
               <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -168,22 +160,20 @@ export default function UploadPage() {
             </div>
           </div>
 
-          {/* upload area */}
           <div className="flex flex-col items-center justify-center flex-1 w-full p-8">
             <div className="flex flex-col w-full max-w-xl gap-6">
 
-              {/* Destination badge */}
               <div className="flex items-center justify-between p-3.5 bg-amber-50/70 border border-amber-200/80 rounded-xl text-xs text-amber-900">
                 <div className="flex items-center gap-2">
                   <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-amber-600">
                     <path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 8 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z" />
                   </svg>
-                  <span>Saving to your private directory: <strong className="font-semibold">{user?.username}/</strong></span>
+                  <span>Saving to: <strong className="font-semibold">{user?.username}/</strong></span>
                 </div>
-                <span className="bg-amber-200/60 text-amber-800 text-[10px] px-2 py-0.5 rounded-full font-medium">Isolated</span>
+                <span className="bg-amber-200/60 text-amber-800 text-[10px] px-2 py-0.5 rounded-full font-medium">Private</span>
               </div>
 
-              {/* drag-and-drop zone */}
+              {/* dropzone */}
               <div
                 onDragOver={handleDragOver}
                 onDragLeave={handleDragLeave}
@@ -216,7 +206,7 @@ export default function UploadPage() {
                       Drag & drop a file here, or click to browse
                     </span>
                     <span className="text-xs text-zinc-400 mt-1">
-                      Uploads move to temp storage immediately without waiting
+                      Files are processed in background
                     </span>
                   </>
                 ) : (
@@ -230,13 +220,12 @@ export default function UploadPage() {
                       {(file.size / 1024).toFixed(1)} KB • {file.type || "file"}
                     </span>
                     {!isUploading && (
-                      <span className="text-xs text-amber-600 mt-2 font-medium">Click to select different file</span>
+                      <span className="text-xs text-amber-600 mt-2 font-medium">Click to choose another</span>
                     )}
                   </>
                 )}
               </div>
 
-              {/* Status / Progress */}
               {isUploading && (
                 <div className="flex items-center gap-3 px-4 py-3 rounded-lg bg-amber-50 border border-amber-200 text-amber-700 text-sm">
                   <svg className="animate-spin shrink-0" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -264,11 +253,11 @@ export default function UploadPage() {
                       <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
                       <polyline points="22 4 12 14.01 9 11.01" />
                     </svg>
-                    <span className="font-semibold">File uploaded to temp storage! Processing in background.</span>
+                    <span className="font-semibold">Uploaded! Background processing started.</span>
                   </div>
                   {result?.key && (
                     <div className="text-xs text-emerald-700 bg-emerald-100/60 p-2 rounded-lg font-mono break-all">
-                      Path: {result.key}
+                      {result.key}
                     </div>
                   )}
                   <div className="flex items-center gap-3 pt-1">
@@ -276,7 +265,7 @@ export default function UploadPage() {
                       href="/"
                       className="text-xs font-semibold text-emerald-700 hover:text-emerald-900 underline"
                     >
-                      Go to Dashboard &rarr;
+                      View in dashboard &rarr;
                     </Link>
                     <button
                       onClick={reset}
@@ -288,7 +277,6 @@ export default function UploadPage() {
                 </div>
               )}
 
-              {/* Action buttons */}
               <div className="flex flex-row items-center gap-3">
                 <button
                   onClick={handleUpload}
@@ -309,7 +297,7 @@ export default function UploadPage() {
                         <polyline points="17 8 12 3 7 8" />
                         <line x1="12" y1="3" x2="12" y2="15" />
                       </svg>
-                      Upload File
+                      Upload
                     </>
                   )}
                 </button>
